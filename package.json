@@ -1,6 +1,6 @@
 {
   "name": "boomdump",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "easy fast mysql dumps",
   "main": "index.js",
   "scripts": {
