@@ -1,5 +1,5 @@
 {
-  "name": "boomp",
+  "name": "boomdump",
   "version": "1.0.0",
   "description": "easy fast mysql dumps",
   "main": "index.js",
