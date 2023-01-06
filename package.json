@@ -1,0 +1,19 @@
+{
+  "name": "boomp",
+  "version": "1.0.0",
+  "description": "easy fast mysql dumps",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mysql",
+    "dump"
+  ],
+  "author": "Kozhurkin Dima",
+  "license": "ISC",
+  "dependencies": {
+    "lodash": "4.17.21",
+    "optimist": "0.6.1"
+  }
+}
