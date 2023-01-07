@@ -81,8 +81,9 @@ module.exports = {
     skiptables = typeof skiptables === 'string' ? skiptables.split(/[\s,]+/g) : [];
 
     if (tables.length === 0) {
-      const out = await this.lazySsh(`mysql ${mysqlconn(exportMysql)} -e "SHOW TABLES"`);
-      tables = out.split('\n').slice(1, -1);
+      const select = `SELECT group_concat(distinct TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '${exportMysql.database}'`;
+      const out = await this.lazySsh(`mysql ${mysqlconn(exportMysql)} -e ${JSON.stringify(select)}`);
+      tables = out.split('\n')[1].split(',');
     }
 
     if (skiptables.length !== 0) {
