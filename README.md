@@ -27,7 +27,7 @@ boomp production local --skip-tables="snapshots logs"
 
 # Dump schema only
 boomp production local --schema
-boomp production local --schema --drop
+boomp production local --schema --drop # drop table if exist
 
 # Select by condition 
 boomp production local --where="userId=7" --tables="balances purchases"
