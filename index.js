@@ -8,7 +8,6 @@ optimist
   .usage([
     'Usage:',
     'boomp help',
-    'boomp [-hvt]',
     'boomp [env_from] [env_to]'
   ].join('\n      '))
   .describe('h', 'print short help');

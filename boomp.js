@@ -81,17 +81,15 @@ module.exports = {
     skiptables = typeof skiptables === 'string' ? skiptables.split(/[\s,]+/g) : [];
 
     if (tables.length === 0) {
-      // throw 'Please specify --tables argument';
-      const select = `SELECT group_concat(distinct TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '${exportMysql.database}'`;
-      const out = await this.lazySsh(`mysql ${mysqlconn(exportMysql)} -e ${JSON.stringify(select)}`);
-      tables = out.split('\n')[1].split(',');
+      const out = await this.lazySsh(`mysql ${mysqlconn(exportMysql)} -e "SHOW TABLES"`);
+      tables = out.split('\n').slice(1, -1);
     }
 
     if (skiptables.length !== 0) {
       tables = _.difference(tables, skiptables);
     }
 
-    // // обрабатываем таблицы указанные через шаблон
+    // // add tables specified by pattern
     // tables = await (async (result = []) => {
     //   for (let table of tables) {
     //     if (table.indexOf('%') !== -1) {
@@ -132,7 +130,7 @@ module.exports = {
 
     await this.makeDumpDir(dumpName);
 
-    // проверяем не заполнилась ли папка с дампами
+    // control size of dump dir
     await this.dirSizeControl(MYSQL_DUMP_DIR, 50);
 
     console.log($.bold(`\n# DUMP FROM ${envFrom} TO ${envTo}`));
@@ -161,13 +159,13 @@ module.exports = {
 
       console.log($.bold('\n# IMPORT DATA\n'));
 
-      // распаковываем архив
+      // unzip
       await this.lazySsh(`tar -xvzf ${MYSQL_DUMP_DIR}/${dumpName}.tar.gz -C ${MYSQL_DUMP_DIR}/${dumpName}`);
 
-      // создаем базу если ее нет
+      // create database if not exist
       await this.lazySsh(`mysql ${mysqlconn(importMysql, false)} -e \"CREATE DATABASE IF NOT EXISTS ${importMysql.database}\"`);
 
-      // заливаем схемы и данные
+      // push schema and data into db
       const sed__IF_NOT_EXISTS = 'sed "s/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g"';
       if (tables.length) {
         await this.lazySsh(`cat ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql | ${sed__IF_NOT_EXISTS} | mysql ${mysqlconn(importMysql)}`);
@@ -184,10 +182,10 @@ module.exports = {
     // catch home dir from export env
     let exportHome = (await this.lazySsh('echo $HOME')).trim();
 
-    // преключаем окружение на envTo, все операции будем делать с него
+    // switch env to import side
     this.switchEnv(envTo);
 
-    // создаем папку для дампа
+    // create dump dir
     await this.makeDumpDir(dumpName);
 
     let isOneServer = (importConfig.host === exportConfig.host) || (this.isLocalEnv(envFrom) && this.isLocalEnv(envTo));
@@ -216,16 +214,16 @@ module.exports = {
       await this.local(`rm -f ${MYSQL_DUMP_DIR}/${dumpName}.tar.gz`);
     }
 
-    // Импортируем данные
+    // import dump
     await importDump();
 
-    // Чистим временные папки в импорт-окружении
+    // clear temporary dirs and files on the import side
     await this.clearTemp(dumpName);
 
-    // Переключаемся в экспорт-окружение
+    // switch env to export side
     this.switchEnv(envFrom);
 
-    // Чистим временные папки в экспорт-окружении
+    // clear temporary dirs and files on the export side
     await this.clearTemp(dumpName);
   },
 
@@ -248,14 +246,14 @@ module.exports = {
   async clearTemp(dumpName) {
     console.log($.bold(`\n# CLEAR ${this.env} TEMP\n`));
     await this.lazySsh(`rm -rf ${MYSQL_DUMP_DIR}/${dumpName}*`);
-    // очистка прерванных дампов
+    // cleanup broken dumps
     await this.lazySsh(`find ${MYSQL_DUMP_DIR}/ -mindepth 1 -maxdepth 1 -name "dump_*" -mmin +300 | xargs rm -rf`);
   },
 
   async dirSizeControl(dir, limit) {
     const out = await this.lazySsh(`du -s ${dir}`);
     const size = +out.split(/\s/)[0];
-    // если временных файлов скопилось на limit Гб
+    // if temporary files have accumulated on limit GB
     if (size > limit * 1024 * 1024) {
       throw `«${$.bold(dir)}» more than ${limit} Gb!`;
     }
