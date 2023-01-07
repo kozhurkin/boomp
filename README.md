@@ -2,6 +2,13 @@
 
 Dump production data to your local machine like a boss.
 
+Supported databases:
+* **MySQL**
+
+In developing:
+* MongoDB
+* PostgreSQL
+
 ## Installation
 
 ```bash

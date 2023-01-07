@@ -10,7 +10,7 @@ optimist
     'boomp help',
     'boomp [env_from] [env_to]'
   ].join('\n      '))
-  .describe('h', 'print short help');
+  .describe('h', 'print help');
 
 
 if (argv._[0] === 'help') {
