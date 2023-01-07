@@ -23,6 +23,7 @@ boomp production local
 
 # Specify tables
 boomp production local --tables="users balances"
+boomp production local --skip-tables="snapshots logs"
 
 # Dump schema only
 boomp production local --schema
