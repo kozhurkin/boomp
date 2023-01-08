@@ -38,7 +38,7 @@ module.exports = {
     console.log('help');
   },
   async lazySsh(...args) {
-    if (this.env.includes('local')) {
+    if (this.isLocalEnv(this.env)) {
       return this.local(...args);
     } else {
       return this.ssh(...args);
@@ -237,7 +237,6 @@ module.exports = {
       return true;
     }
     return ['localhost', '127.0.0.1'].includes(host);
-
   },
 
   async makeDumpDir(dumpName) {
