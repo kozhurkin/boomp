@@ -2,12 +2,9 @@
 
 Dump production data to your local machine like a boss.
 
-Supported databases:
-* **MySQL**
-
-In developing:
-* MongoDB
-* PostgreSQL
+* **MySQL - supported**
+* MongoDB - in developing
+* PostgreSQL - in developing
 
 ## Installation
 
