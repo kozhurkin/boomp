@@ -2,7 +2,7 @@
 
 Dump production data to your local machine like a boss.
 
-* **MySQL - supported**
+* **MySQL - ready to use**
 * MongoDB - in developing
 * PostgreSQL - in developing
 

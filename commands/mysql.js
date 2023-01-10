@@ -1,62 +1,29 @@
-const _ = require('lodash');
 const os = require('os');
-const path = require('path');
+const _ = require('lodash');
 const { argv } = require('optimist');
-const $ = require('./stylize');
-const spawnProcess = require('./spawnProcess');
-const { hidePass, mysqlconn } = require('./helpers');
+const $ = require('../stylize');
+const { Cmd } = require('../cmd');
 
 const DUMP_DIR = '~/.boomp/dumps';
 const MYSQL_DUMP_DIR = `${DUMP_DIR}/mysql`;
 const USERNAME = process.env.USER;
 const HOSTNAME = os.hostname();
 
-module.exports = {
-  env: null,
-  config: null,
-
-  async ssh(...cmd) {
-    cmd = cmd.join('\n');
-    const { user, host, port } = this.config;
-    console.log($.bold($.blue(user + '@' + host)) + ' :> ' + $.yellow(hidePass(cmd)));
-    return spawnProcess('ssh', [`-p ${port}`, `${user}@${host}`, cmd]);
-  },
-  async local(...cmd) {
-    cmd = cmd.join('\n');
-    console.log($.bold($.blue(`${USERNAME}@${HOSTNAME}`)) + ' :> ' + $.lightmagenta(hidePass(cmd)));
-    return spawnProcess('sh', ['-c', cmd]);
-  },
-  getEnv(env) {
-    const configpath = path.resolve(process.cwd(), './boomp', env);
-    return require(configpath);
-  },
-  switchEnv(env) {
-    this.env = env;
-    this.config = this.getEnv(env);
-  },
-  help() {
-    console.log('help');
-  },
-  async lazySsh(...args) {
-    if (this.isLocalEnv(this.env)) {
-      return this.local(...args);
-    } else {
-      return this.ssh(...args);
-    }
-  },
+class Mysql extends Cmd {
+  constructor() {
+    super()
+    //
+  }
   async mysqlDump(envFrom, envTo, options = {}) {
-    if (envTo.includes('prod')) {
-      throw 'Deny dump to production!';
-    }
-
     const exportConfig = this.getEnv(envFrom);
     const importConfig = this.getEnv(envTo);
 
-    const exportMysql = exportConfig.mysql || {};
-    const importMysql = importConfig.mysql || {};
+    if (importConfig.isProductionEnv()) {
+      throw 'Deny dump to production!';
+    }
 
-    if (!exportMysql.host || !exportMysql.database) throw `Bad mysql-settings in ${envFrom}-config.`;
-    if (!importMysql.host || !importMysql.database) throw `Bad mysql-settings in ${envTo}-config.`;
+    const exportMysql = exportConfig.validateMysql();
+    const importMysql = importConfig.validateMysql();
 
     this.switchEnv(envFrom);
 
@@ -82,7 +49,7 @@ module.exports = {
 
     if (tables.length === 0) {
       const select = `SELECT group_concat(distinct TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '${exportMysql.database}'`;
-      const out = await this.lazySsh(`mysql ${mysqlconn(exportMysql)} -e ${JSON.stringify(select)}`);
+      const out = await this.lazySsh(`mysql ${exportConfig.mysqlconn()} -e ${JSON.stringify(select)}`);
       tables = out.split('\n')[1].split(',');
     }
 
@@ -94,7 +61,7 @@ module.exports = {
     // tables = await (async (result = []) => {
     //   for (let table of tables) {
     //     if (table.indexOf('%') !== -1) {
-    //       let out = await this.lazySsh(`mysql ${mysqlconn(exportMysql)} -e "SHOW TABLES LIKE '${table}'"`);
+    //       let out = await this.lazySsh(`mysql ${exportConfig.mysqlconn()} -e "SHOW TABLES LIKE '${table}'"`);
     //       result.concat(out.split('\n').slice(1, -1));
     //     }
     //   }
@@ -138,12 +105,12 @@ module.exports = {
 
     console.log($.bold('\n# EXPORT DATA\n'));
 
-    await this.lazySsh(`mysqldump --disable-keys --single-transaction --quick ${mysqlconn(exportMysql)} ${mysqldumpArgs} > ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql`);
+    await this.lazySsh(`mysqldump --disable-keys --single-transaction --quick ${exportConfig.mysqlconn()} ${mysqldumpArgs} > ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql`);
 
     // for (let tableName in secretSelects) {
     //   const select = secretSelects[tableName];
-    //   await this.lazySsh(`mysql ${mysqlconn(exportMysql)} -e ${JSON.stringify(select)} -N | less | sed \"s/	NULL/	\\\\\\N/g\" > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows`);
-    //   await this.lazySsh(`mysqldump ${mysqlconn(exportMysql)} ${tableName} --single-transaction ${drop ? '' : '--skip-add-drop-table'} --no-data > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema`);
+    //   await this.lazySsh(`mysql ${exportConfig.mysqlconn()} -e ${JSON.stringify(select)} -N | less | sed \"s/	NULL/	\\\\\\N/g\" > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows`);
+    //   await this.lazySsh(`mysqldump ${exportConfig.mysqlconn()} ${tableName} --single-transaction ${drop ? '' : '--skip-add-drop-table'} --no-data > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema`);
     // }
 
     await this.lazySsh(
@@ -155,7 +122,7 @@ module.exports = {
       if (!schema && !drop && tables.length && where) {
         console.log($.bold('\n# DELETE ROWS BY WHERE'));
         const deleteQuery = tables.map(table => `DELETE FROM ${table} WHERE ${where}`);
-        await this.lazySsh(`mysql ${mysqlconn(importMysql)} -e \"${deleteQuery.join('; ')}\"`);
+        await this.lazySsh(`mysql ${importConfig.mysqlconn()} -e \"${deleteQuery.join('; ')}\"`);
       }
 
       console.log($.bold('\n# IMPORT DATA\n'));
@@ -164,17 +131,17 @@ module.exports = {
       await this.lazySsh(`tar -xvzf ${MYSQL_DUMP_DIR}/${dumpName}.tar.gz -C ${MYSQL_DUMP_DIR}/${dumpName}`);
 
       // create database if not exist
-      await this.lazySsh(`mysql ${mysqlconn(importMysql, false)} -e \"CREATE DATABASE IF NOT EXISTS ${importMysql.database}\"`);
+      await this.lazySsh(`mysql ${importConfig.mysqlconn(false)} -e \"CREATE DATABASE IF NOT EXISTS ${importMysql.database}\"`);
 
       // push schema and data into db
       const sed__IF_NOT_EXISTS = 'sed "s/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g"';
       if (tables.length) {
-        await this.lazySsh(`cat ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql | ${sed__IF_NOT_EXISTS} | mysql ${mysqlconn(importMysql)}`);
+        await this.lazySsh(`cat ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql | ${sed__IF_NOT_EXISTS} | mysql ${importConfig.mysqlconn()}`);
       }
 
       // for (const tableName in secretSelects) {
-      //   await this.lazySsh(`cat ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema | ${sed__IF_NOT_EXISTS} | mysql ${mysqlconn(importMysql)}`);
-      //   await this.lazySsh(`mysqlimport ${mysqlconn(importMysql)} \'${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows\' --local`);
+      //   await this.lazySsh(`cat ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema | ${sed__IF_NOT_EXISTS} | mysql ${importConfig.mysqlconn()}`);
+      //   await this.lazySsh(`mysqlimport ${importConfig.mysqlconn()} \'${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows\' --local`);
       // }
     };
 
@@ -189,8 +156,7 @@ module.exports = {
     // create dump dir
     await this.makeDumpDir(dumpName);
 
-    let isOneServer = (importConfig.host === exportConfig.host) || (this.isLocalEnv(envFrom) && this.isLocalEnv(envTo));
-    if (isOneServer) {
+    if (this.isSameServer(envFrom, envTo)) {
       const exportDir = MYSQL_DUMP_DIR.replace('~', exportHome);
       const tarGz = `${exportDir}/${dumpName}.tar.gz`;
       const isExist = await this.lazySsh(`test -f ${tarGz} && echo "FILE exists."`);
@@ -226,29 +192,18 @@ module.exports = {
 
     // clear temporary dirs and files on the export side
     await this.clearTemp(dumpName);
-  },
-
-  isLocalEnv(env) {
-    if (env.includes('local')) {
-      return true;
-    }
-    const { host } = this.getEnv(env);
-    if (!host) {
-      return true;
-    }
-    return ['localhost', '127.0.0.1'].includes(host);
-  },
+  }
 
   async makeDumpDir(dumpName) {
     await this.lazySsh(`mkdir -p ${MYSQL_DUMP_DIR}/${dumpName}`);
-  },
+  }
 
   async clearTemp(dumpName) {
     console.log($.bold(`\n# CLEAR ${this.env} TEMP\n`));
     await this.lazySsh(`rm -rf ${MYSQL_DUMP_DIR}/${dumpName}*`);
     // cleanup broken dumps
     await this.lazySsh(`find ${MYSQL_DUMP_DIR}/ -mindepth 1 -maxdepth 1 -name "dump_*" -mmin +300 | xargs rm -rf`);
-  },
+  }
 
   async dirSizeControl(dir, limit) {
     const out = await this.lazySsh(`du -s ${dir}`);
@@ -257,7 +212,7 @@ module.exports = {
     if (size > limit * 1024 * 1024) {
       throw `«${$.bold(dir)}» more than ${limit} Gb!`;
     }
-  },
+  }
 
   async selectBuilder(tableName, restrictions) {
     let { mysql } = this.config;
@@ -276,5 +231,7 @@ module.exports = {
       return fieldsForReplace[value];
     });
     return `SELECT ${replacedFields.join(', ')} FROM ${mysql.database}.${tableName}`;
-  },
-};
+  }
+}
+
+module.exports = { Mysql }

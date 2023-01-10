@@ -1,5 +1,5 @@
 const optimist = require('optimist');
-const boomp = require('./boomp');
+const { Mysql } = require('./commands/mysql');
 const $ = require('./stylize');
 
 const argv = optimist.argv;
@@ -18,8 +18,10 @@ if (argv._[0] === 'help') {
 } else if (argv._.length >= 2) {
   const envFrom = argv._[0];
   const envTo = argv._[1];
-  boomp.mysqlDump(envFrom, envTo, argv._.slice(2)).catch(err => {
+  const task = new Mysql()
+  task.mysqlDump(envFrom, envTo, argv._.slice(2)).catch(err => {
     console.error($.bold(err));
+    console.error(err.stack);
   });
 } else {
   optimist.showHelp();
