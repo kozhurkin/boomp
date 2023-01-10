@@ -3,9 +3,8 @@ const _ = require('lodash');
 const { argv } = require('optimist');
 const $ = require('../stylize');
 const { Cmd } = require('../cmd');
+const { MYSQL_DUMP_DIR } = require('../constants');
 
-const DUMP_DIR = '~/.boomp/dumps';
-const MYSQL_DUMP_DIR = `${DUMP_DIR}/mysql`;
 const USERNAME = process.env.USER;
 const HOSTNAME = os.hostname();
 
