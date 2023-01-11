@@ -3,7 +3,7 @@
 Dump production data to your local machine like a boss.
 
 * **MySQL - ready to use**
-* MongoDB - in developing
+* **MongoDB - ready to use**
 * PostgreSQL - in developing
 
 ## Installation
@@ -12,28 +12,53 @@ Dump production data to your local machine like a boss.
 sudo npm install -g boomdump
 ```
 
+## Before start
+
+You must be able to access remote servers via **vpn** or **ssh** using your public key.\
+For mysql dumps uses **mysql** command.\
+For mongo dumps uses **mongodump** and **mongorestore** commands.
+
 ## Usage
+
+#### boomp mysql
 
 ```bash
 # Dump all schemas and data
-boomp production local
+boomp mysql production local
 
 # Specify tables
-boomp production local --tables="users balances"
-boomp production local --skip-tables="snapshots logs"
+boomp mysql production local --tables="users balances"
+boomp mysql production local --skip-tables="snapshots logs"
 
 # Dump schema only
-boomp production local --schema
-boomp production local --schema --drop # drop table if exist
+boomp mysql production local --schema
+boomp mysql production local --schema --drop # drop table if exist
 
 # Select by condition 
-boomp production local --where="userId=7" --tables="balances purchases"
-boomp production local --where="status in ('failed', 'ok')" --tables="transactions"
+boomp mysql production local --where="userId=7" --tables="balances purchases"
+boomp mysql production local --where="status in ('failed', 'ok')" --tables="transactions"
 
 # You can dump not only from production to local
-boomp production stage
-boomp stage local
-boomp prodreplica local2
+boomp mysql production stage
+boomp mysql stage local
+boomp mysql prodreplica local2
+```
+
+#### boomp mongo
+
+```bash
+# Dump all collections
+boomp mongo production local
+boomp mongo production local --drop # use for drop and replace
+
+# Specify collections
+boomp mongo production local --collections="users balances"
+boomp mongo production local --skip-collections="snapshots logs"
+
+# Select by condition
+boomp mongo production local --where="{ userId: 7 }" --collections="balances purchases"
+boomp mongo production local --where="{ status: $in: [\'failed\', \'ok\'] }" --tables="transactions"
+
 ```
 
 ## Configs
@@ -65,6 +90,12 @@ module.exports = {
     username : mysql.username,
     password : mysql.password,
     database : mysql.database,
+  },
+  mongo: {
+    host     : "my.mongodb.net",
+    username : "myuser",
+    database : "mydb",
+    password : "qwerty123",
   }
 }
 ```
@@ -77,6 +108,10 @@ module.exports = {
     "username": "root",
     "password": "123",
     "database": "thehatdb"
+  },
+  "mongo": {
+    "host": "localhost",
+    "database": "mydb"
   }
 }
 ```

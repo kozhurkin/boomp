@@ -30,10 +30,27 @@ class Config {
       withDb ? database : null,
     ]).join(' ');
   }
+  mongoconn(){
+    const { host, username, password, database } = this.mongo;
+    let opts = [
+      '--host=' + host,
+      '--db=' + database
+    ]
+    if (username) opts.push('--username=' + username);
+    if (password) opts.push('--password=' + password);
+    return opts.join(' ');
+  }
   validateMysql() {
     const settings = this.mysql || {};
     if (!settings.host || !settings.database) {
       throw `Bad mysql-settings in ${this.env}-config.`;
+    }
+    return settings;
+  }
+  validateMongo() {
+    const settings = this.mongo || {};
+    if (!settings.host || !settings.database) {
+      throw `Bad mongo-settings in ${this.env}-config.`;
     }
     return settings;
   }

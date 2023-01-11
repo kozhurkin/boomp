@@ -1,6 +1,5 @@
 const os = require('os');
 const _ = require('lodash');
-const { argv } = require('optimist');
 const $ = require('../stylize');
 const { Cmd } = require('../cmd');
 const { MYSQL_DUMP_DIR } = require('../constants');
@@ -34,21 +33,21 @@ class Mysql extends Cmd {
       `${USERNAME}@${HOSTNAME}`,
     ].join('_');
 
-    let drop = argv['drop'];
-    let where = argv['where'];
-    let schema = argv['schema'] || argv['schema-only'];
+    let drop = options['drop'];
+    let where = options['where'];
+    let schema = options['schema'] || options['schema-only'];
     if (!schema && !where) {
       drop = true;
     }
-    let tables = argv['table'] || argv['tables'];
+    let tables = options['table'] || options['tables'];
     tables = typeof tables === 'string' ? tables.split(/[\s,]+/g) : [];
 
-    let skiptables = argv['skip-table'] || argv['skip-tables'];
+    let skiptables = options['skip-table'] || options['skip-tables'];
     skiptables = typeof skiptables === 'string' ? skiptables.split(/[\s,]+/g) : [];
 
     if (tables.length === 0) {
       const select = `SELECT group_concat(distinct TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '${exportMysql.database}'`;
-      const out = await this.lazySsh(`mysql ${exportConfig.mysqlconn()} -e ${JSON.stringify(select)}`);
+      const out = await this.sshif(`mysql ${exportConfig.mysqlconn()} -e ${JSON.stringify(select)}`);
       tables = out.split('\n')[1].split(',');
     }
 
@@ -60,7 +59,7 @@ class Mysql extends Cmd {
     // tables = await (async (result = []) => {
     //   for (let table of tables) {
     //     if (table.indexOf('%') !== -1) {
-    //       let out = await this.lazySsh(`mysql ${exportConfig.mysqlconn()} -e "SHOW TABLES LIKE '${table}'"`);
+    //       let out = await this.sshif(`mysql ${exportConfig.mysqlconn()} -e "SHOW TABLES LIKE '${table}'"`);
     //       result.concat(out.split('\n').slice(1, -1));
     //     }
     //   }
@@ -104,15 +103,15 @@ class Mysql extends Cmd {
 
     console.log($.bold('\n# EXPORT DATA\n'));
 
-    await this.lazySsh(`mysqldump --disable-keys --single-transaction --quick ${exportConfig.mysqlconn()} ${mysqldumpArgs} > ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql`);
+    await this.sshif(`mysqldump --disable-keys --single-transaction --quick ${exportConfig.mysqlconn()} ${mysqldumpArgs} > ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql`);
 
     // for (let tableName in secretSelects) {
     //   const select = secretSelects[tableName];
-    //   await this.lazySsh(`mysql ${exportConfig.mysqlconn()} -e ${JSON.stringify(select)} -N | less | sed \"s/	NULL/	\\\\\\N/g\" > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows`);
-    //   await this.lazySsh(`mysqldump ${exportConfig.mysqlconn()} ${tableName} --single-transaction ${drop ? '' : '--skip-add-drop-table'} --no-data > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema`);
+    //   await this.sshif(`mysql ${exportConfig.mysqlconn()} -e ${JSON.stringify(select)} -N | less | sed \"s/	NULL/	\\\\\\N/g\" > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows`);
+    //   await this.sshif(`mysqldump ${exportConfig.mysqlconn()} ${tableName} --single-transaction ${drop ? '' : '--skip-add-drop-table'} --no-data > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema`);
     // }
 
-    await this.lazySsh(
+    await this.sshif(
       `cd ${MYSQL_DUMP_DIR}/${dumpName}`,
       `tar -zcvf ../${dumpName}.tar.gz ./`
     );
@@ -121,33 +120,33 @@ class Mysql extends Cmd {
       if (!schema && !drop && tables.length && where) {
         console.log($.bold('\n# DELETE ROWS BY WHERE'));
         const deleteQuery = tables.map(table => `DELETE FROM ${table} WHERE ${where}`);
-        await this.lazySsh(`mysql ${importConfig.mysqlconn()} -e \"${deleteQuery.join('; ')}\"`);
+        await this.sshif(`mysql ${importConfig.mysqlconn()} -e \"${deleteQuery.join('; ')}\"`);
       }
 
       console.log($.bold('\n# IMPORT DATA\n'));
 
       // unzip
-      await this.lazySsh(`tar -xvzf ${MYSQL_DUMP_DIR}/${dumpName}.tar.gz -C ${MYSQL_DUMP_DIR}/${dumpName}`);
+      await this.sshif(`tar -xvzf ${MYSQL_DUMP_DIR}/${dumpName}.tar.gz -C ${MYSQL_DUMP_DIR}/${dumpName}`);
 
       // create database if not exist
-      await this.lazySsh(`mysql ${importConfig.mysqlconn(false)} -e \"CREATE DATABASE IF NOT EXISTS ${importMysql.database}\"`);
+      await this.sshif(`mysql ${importConfig.mysqlconn(false)} -e \"CREATE DATABASE IF NOT EXISTS ${importMysql.database}\"`);
 
       // push schema and data into db
       const sed__IF_NOT_EXISTS = 'sed "s/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g"';
       if (tables.length) {
-        await this.lazySsh(`cat ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql | ${sed__IF_NOT_EXISTS} | mysql ${importConfig.mysqlconn()}`);
+        await this.sshif(`cat ${MYSQL_DUMP_DIR}/${dumpName}/dump.sql | ${sed__IF_NOT_EXISTS} | mysql ${importConfig.mysqlconn()}`);
       }
 
       // for (const tableName in secretSelects) {
-      //   await this.lazySsh(`cat ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema | ${sed__IF_NOT_EXISTS} | mysql ${importConfig.mysqlconn()}`);
-      //   await this.lazySsh(`mysqlimport ${importConfig.mysqlconn()} \'${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows\' --local`);
+      //   await this.sshif(`cat ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema | ${sed__IF_NOT_EXISTS} | mysql ${importConfig.mysqlconn()}`);
+      //   await this.sshif(`mysqlimport ${importConfig.mysqlconn()} \'${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows\' --local`);
       // }
     };
 
     console.log($.bold('\n# MOVE DATA\n'));
 
-    // catch home dir from export env
-    let exportHome = (await this.lazySsh('echo $HOME')).trim();
+    // catch home dir from export env (before switch)
+    let exportHome = (await this.sshif('echo $HOME')).trim();
 
     // switch env to import side
     this.switchEnv(envTo);
@@ -158,26 +157,26 @@ class Mysql extends Cmd {
     if (this.isSameServer(envFrom, envTo)) {
       const exportDir = MYSQL_DUMP_DIR.replace('~', exportHome);
       const tarGz = `${exportDir}/${dumpName}.tar.gz`;
-      const isExist = await this.lazySsh(`test -f ${tarGz} && echo "FILE exists."`);
+      const isExist = await this.sshif(`test -f ${tarGz} && echo "FILE exists."`);
       if (!isExist) {
-        await this.lazySsh(`cp ${tarGz} ${MYSQL_DUMP_DIR}/`);
+        await this.sshif(`cp ${tarGz} ${MYSQL_DUMP_DIR}/`);
       }
     } else if (this.isLocalEnv(envTo)) {
-      await this.local(
+      await this.cmd(
         `rsync -av --progress -e 'ssh -p ${exportConfig.port}' ${exportConfig.user}@${exportConfig.host}:${MYSQL_DUMP_DIR}/${dumpName}.tar.gz ${MYSQL_DUMP_DIR}/`
       );
     } else {
-      await this.local(`mkdir -p ${MYSQL_DUMP_DIR}`);
+      await this.cmd(`mkdir -p ${MYSQL_DUMP_DIR}`);
 
-      await this.local(
+      await this.cmd(
         `rsync -av --progress -e 'ssh -p ${exportConfig.port}' ${exportConfig.user}@${exportConfig.host}:${MYSQL_DUMP_DIR}/${dumpName}.tar.gz ${MYSQL_DUMP_DIR}`
       );
 
-      await this.local(
+      await this.cmd(
         `rsync -av --progress -e 'ssh -p ${importConfig.port}' ${MYSQL_DUMP_DIR}/${dumpName}.tar.gz ${importConfig.user}@${importConfig.host}:${MYSQL_DUMP_DIR}/`
       );
 
-      await this.local(`rm -f ${MYSQL_DUMP_DIR}/${dumpName}.tar.gz`);
+      await this.cmd(`rm -f ${MYSQL_DUMP_DIR}/${dumpName}.tar.gz`);
     }
 
     // import dump
@@ -194,23 +193,14 @@ class Mysql extends Cmd {
   }
 
   async makeDumpDir(dumpName) {
-    await this.lazySsh(`mkdir -p ${MYSQL_DUMP_DIR}/${dumpName}`);
+    await this.sshif(`mkdir -p ${MYSQL_DUMP_DIR}/${dumpName}`);
   }
 
   async clearTemp(dumpName) {
     console.log($.bold(`\n# CLEAR ${this.env} TEMP\n`));
-    await this.lazySsh(`rm -rf ${MYSQL_DUMP_DIR}/${dumpName}*`);
+    await this.sshif(`rm -rf ${MYSQL_DUMP_DIR}/${dumpName}*`);
     // cleanup broken dumps
-    await this.lazySsh(`find ${MYSQL_DUMP_DIR}/ -mindepth 1 -maxdepth 1 -name "dump_*" -mmin +300 | xargs rm -rf`);
-  }
-
-  async dirSizeControl(dir, limit) {
-    const out = await this.lazySsh(`du -s ${dir}`);
-    const size = +out.split(/\s/)[0];
-    // if temporary files have accumulated on limit GB
-    if (size > limit * 1024 * 1024) {
-      throw `«${$.bold(dir)}» more than ${limit} Gb!`;
-    }
+    await this.sshif(`find ${MYSQL_DUMP_DIR}/ -mindepth 1 -maxdepth 1 -name "dump_*" -mmin +300 | xargs rm -rf`);
   }
 
   async selectBuilder(tableName, restrictions) {
@@ -223,7 +213,7 @@ class Mysql extends Cmd {
       return -1;
     }
     const select = `SELECT group_concat(COLUMN_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '${mysql.database}' AND TABLE_NAME = '${tableName}'`;
-    let fields = await this.lazySsh(`mysql ${mysqlconn(mysql)} -e ${JSON.stringify(select)}`);
+    let fields = await this.sshif(`mysql ${mysqlconn(mysql)} -e ${JSON.stringify(select)}`);
     fields = fields.split('\n')[1].split(',');
     let replacedFields = fields.map(value => {
       if (!fieldsForReplace[value]) return value;

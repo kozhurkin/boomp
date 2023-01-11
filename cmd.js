@@ -25,17 +25,26 @@ class Cmd extends ConfigManger {
     return spawnProcess('ssh', [`-p ${port}`, `${user}@${host}`, cmd]);
   }
 
-  async local(...cmd) {
+  async cmd(...cmd) {
     cmd = cmd.join('\n');
     console.log($.bold($.blue(`${USERNAME}@${HOSTNAME}`)) + ' :> ' + $.lightmagenta(this.#hidePass(cmd)));
     return spawnProcess('sh', ['-c', cmd]);
   }
 
-  async lazySsh(...args) {
+  async sshif(...args) {
     if (this.config.isLocalEnv()) {
-      return this.local(...args);
+      return this.cmd(...args);
     } else {
       return this.ssh(...args);
+    }
+  }
+
+  async dirSizeControl(dir, limit) {
+    const out = await this.sshif(`du -s ${dir}`);
+    const size = +out.split(/\s/)[0];
+    // if temporary files have accumulated on limit GB
+    if (size > limit * 1024 * 1024) {
+      throw `«${$.bold(dir)}» more than ${limit} Gb!`;
     }
   }
 }
