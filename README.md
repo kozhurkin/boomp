@@ -15,10 +15,20 @@ sudo npm install -g boomdump
 ## Before start
 
 You must be able to access remote servers via **vpn** or **ssh** using your public key.\
-For mysql dumps uses **mysql** command.\
-For mongo dumps uses **mongodump** and **mongorestore** commands.
+Mysql dumps uses **mysql** command.\
+Mongo dumps uses **mongodump** and **mongorestore** commands.
 
 ## Usage
+```
+Usage:
+      boomp help [command]
+      boomp mysql [from_env] [to_env]
+      boomp mongo [from_env] [to_env]
+
+Options:
+  -h  print help
+
+```
 
 #### boomp mysql
 

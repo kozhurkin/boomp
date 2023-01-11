@@ -10,7 +10,7 @@ const argv = optimist.argv;
 optimist
   .usage([
     'Usage:',
-    'boomp help',
+    'boomp help [command]',
     'boomp mysql [from_env] [to_env]',
     'boomp mongo [from_env] [to_env]',
   ].join('\n      '))
