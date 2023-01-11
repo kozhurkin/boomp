@@ -29,15 +29,15 @@ class Help {
         break;
       }
       case 'mongo': {
-        console.log('');
-        console.log($.darkgray('# Dump all collections'));
-        console.log('boomp mongo production local');
-        console.log('boomp mongo production local --drop', $.darkgray('# use for drop and replace'));
+        // console.log('');
+        // console.log($.darkgray('# Dump all collections'));
+        // console.log('boomp mongo production local');
+        // console.log('boomp mongo production local --drop', $.darkgray('# use for drop and replace'));
 
         console.log('');
         console.log($.darkgray('# Specify collections'));
         console.log('boomp mongo production local --collections="users balances"');
-        console.log('boomp mongo production local --skip-collections="snapshots logs"');
+        // console.log('boomp mongo production local --skip-collections="snapshots logs"');
 
         console.log('');
         console.log($.darkgray('# Select by condition'));

@@ -6,16 +6,17 @@ Dump production data to your local machine like a boss.
 * **MongoDB - ready to use**
 * PostgreSQL - in developing
 
-**Notice:** You must be able to access remote servers via **vpn** or **ssh** using your public key.\
-Mysql dumps uses **mysql** command.\
-Mongo dumps uses **mongodump** and **mongorestore** commands.
-
-
 ## Installation
 
 ```bash
 sudo npm install -g boomdump
 ```
+
+## Before start
+
+You must be able to access remote servers via **vpn** or **ssh** using your public key.\
+Mysql dumps uses **mysql** command.\
+Mongo dumps uses **mongodump** and **mongorestore** commands.
 
 ## Usage
 ```
@@ -56,13 +57,8 @@ boomp mysql prodreplica local2
 #### boomp mongo
 
 ```bash
-# Dump all collections
-boomp mongo production local
-boomp mongo production local --drop # use for drop and replace
-
 # Specify collections
 boomp mongo production local --collections="users balances"
-boomp mongo production local --skip-collections="snapshots logs"
 
 # Select by condition
 boomp mongo production local --where="{ userId: 7 }" --collections="balances purchases"
