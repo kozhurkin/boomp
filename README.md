@@ -6,17 +6,16 @@ Dump production data to your local machine like a boss.
 * **MongoDB - ready to use**
 * PostgreSQL - in developing
 
+**Notice:** You must be able to access remote servers via **vpn** or **ssh** using your public key.\
+Mysql dumps uses **mysql** command.\
+Mongo dumps uses **mongodump** and **mongorestore** commands.
+
+
 ## Installation
 
 ```bash
 sudo npm install -g boomdump
 ```
-
-## Before start
-
-You must be able to access remote servers via **vpn** or **ssh** using your public key.\
-Mysql dumps uses **mysql** command.\
-Mongo dumps uses **mongodump** and **mongorestore** commands.
 
 ## Usage
 ```
