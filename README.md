@@ -12,11 +12,25 @@ Dump production data to your local machine like a boss.
 sudo npm install -g boomdump
 ```
 
-## Before start
+## How it works
 
-You must be able to access remote servers via **vpn** or **ssh** using your public key.\
-Mysql dumps uses **mysql** command.\
-Mongo dumps uses **mongodump** and **mongorestore** commands.
+Imagine that you are dumping data from production to a local machine.
+
+`
+boomp mysql production local
+`
+
+1) First, boomp connects via **ssh** to the **production** server.
+2) And creates a temporary dump directory in the user's **home** directory.
+3) Then it **dumps** the data to that directory and archives the directory.
+4) Using the **rsync** utility, the archived dump is coping to your **local** home directory.
+5) The dump file is unpacked and **imported** into the database.
+6) All temporary directories on the production and local server are **cleared**. Done.
+
+You have production data in your local database. Enjoy!
+
+**Notice 1:** You must be able to access remote servers via **vpn** or **ssh** using your public key.\
+**Notice 2:** Mysql dumps uses **mysql** command. Mongo dumps uses **mongodump** and **mongorestore** commands.
 
 ## Usage
 ```
