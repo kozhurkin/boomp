@@ -76,14 +76,14 @@ boomp mongo production local --collections="users balances"
 
 # Select by condition
 boomp mongo production local --where="{ userId: 7 }" --collections="balances purchases"
-boomp mongo production local --where="{ status: $in: [\'failed\', \'ok\'] }" --tables="transactions"
+boomp mongo production local --where="{ status: $in: ['failed', 'ok'] }" --tables="transactions"
 
 ```
 
 ## Configs
 
-Place configs to **/boomp** directory\
-Use **.js** and **.json** config formats
+Place config files in the **/boomp** directory.\
+Use **.js** and **.json** config formats.
 
 ```bash
 /project
@@ -95,7 +95,7 @@ Use **.js** and **.json** config formats
   README.md
 ```
 
-### production.json
+### production.js
 ```javascript
 // require mysql settings from main config
 const { mysql } = require('../config/production.json');
