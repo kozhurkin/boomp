@@ -76,7 +76,7 @@ boomp mongo production local --collections="users balances"
 
 # Select by condition
 boomp mongo production local --where="{ userId: 7 }" --collections="balances purchases"
-boomp mongo production local --where="{ status: $in: ['failed', 'ok'] }" --tables="transactions"
+boomp mongo production local --where="{ status: { \$in: ['failed', 'ok'] } }" --tables="transactions"
 
 ```
 
@@ -111,7 +111,7 @@ module.exports = {
     database : mysql.database,
   },
   mongo: {
-    host     : "my.mongodb.net",
+    host     : "mongodb+srv://my.xyz.mongodb.net",
     username : "myuser",
     database : "mydb",
     password : "qwerty123",

@@ -31,13 +31,15 @@ class Config {
     ]).join(' ');
   }
   mongoconn(){
-    const { host, username, password, database } = this.mongo;
-    let opts = [
-      '--host=' + host,
-      '--db=' + database
-    ]
-    if (username) opts.push('--username=' + username);
-    if (password) opts.push('--password=' + password);
+    let { host, username, password, database } = this.mongo;
+    let opts = [];
+    const split = host.split('://');
+    if (split.length === 1) {
+      host = `mongodb://${host}`;
+    }
+    opts.push(`"${host}/${database}"`);
+    if (username) opts.push(`-u=${username}`);
+    if (password) opts.push(`-p=${password}`);
     return opts.join(' ');
   }
   validateMysql() {

@@ -1,3 +1,4 @@
+const vm = require('vm');
 const os = require('os');
 const { Cmd } = require('../cmd');
 const { MONGO_DUMP_DIR } = require('../constants');
@@ -11,14 +12,24 @@ class Mongo extends Cmd {
     //
   }
 
-  #addslashes(str) {
-    return str
-      // .replace(/\'/g,'\\\'')
-      // .replace(/\0/g,'\\0')
-      .replace(/\\/g,'\\\\')
-      .replace(/"/g,'\\"')
-      .replace(/\$/g, '\\\$');
+  #parseWhere(where) {
+    try {
+      const context = vm.runInNewContext(`where = ${where}`, {});
+      return JSON.stringify(context)
+    } catch(e) {
+      console.error(e);
+      throw new Error('--where parse error');
+    }
   }
+
+  // #addslashes(str) {
+  //   return str
+  //     // .replace(/\'/g,'\\\'')
+  //     // .replace(/\0/g,'\\0')
+  //     .replace(/\\/g,'\\\\')
+  //     .replace(/"/g,'\\"')
+  //     .replace(/\$/g, '\\\$');
+  // }
 
   async mongoDump(envFrom, envTo, options){
 
@@ -37,7 +48,7 @@ class Mongo extends Cmd {
     //
     let collections = options['collections'] || options['collection'];
     collections     = collections ? collections.split(/[\s,]+/g) : [];
-    let where       = options['where'] ? `-q "${this.#addslashes(options['where'])}"` : '';
+    let where       = options['where'] ? `-q '${this.#parseWhere(options['where'])}'` : '';
     let drop        = options['drop'];
 
     let dumpName = [
@@ -71,7 +82,7 @@ class Mongo extends Cmd {
     console.log('\n// EXPORT DATA');
 
     for (let collection of collections) {
-      await this.sshif(`mongodump ${exportConfig.mongoconn()} --collection ${collection} ${where} --out ${MONGO_DUMP_DIR}/${dumpName}`);
+      await this.sshif(`mongodump ${exportConfig.mongoconn()} -c ${collection} ${where} --out ${MONGO_DUMP_DIR}/${dumpName}`);
     }
 
     const importDump = async() => {
