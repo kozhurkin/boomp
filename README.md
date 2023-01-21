@@ -73,10 +73,12 @@ boomp mysql prodreplica local2
 ```bash
 # Specify collections
 boomp mongo production local --collections="users balances"
+boomp mongo production local --skip-collections="transactions"
 
 # Select by condition
+boomp mongo production local --where="{ _id: ObjectId('61b14e0a5ff2aa0874b7e8bb') }" --collections="users"
 boomp mongo production local --where="{ userId: 7 }" --collections="balances purchases"
-boomp mongo production local --where="{ status: { \$in: ['failed', 'ok'] } }" --tables="transactions"
+boomp mongo production local --where="{ status: { \$in: ['failed', 'ok'] } }" --collections="transactions"
 
 ```
 
