@@ -2,6 +2,8 @@ const vm = require('vm');
 const os = require('os');
 const { Cmd } = require('../cmd');
 const { MONGO_DUMP_DIR } = require('../constants');
+const _ = require("lodash");
+const $ = require("../stylize");
 
 const USERNAME = process.env.USER;
 const HOSTNAME = os.hostname();
@@ -14,7 +16,8 @@ class Mongo extends Cmd {
 
   #parseWhere(where) {
     try {
-      const context = vm.runInNewContext(`where = ${where}`, {});
+      const ObjectId = id => ({ $eq: { $oid: id } });
+      const context = vm.runInNewContext(`where = ${where}`, { ObjectId });
       return JSON.stringify(context)
     } catch(e) {
       console.error(e);
@@ -46,10 +49,22 @@ class Mongo extends Cmd {
     await this.switchEnv(envFrom);
 
     //
-    let collections = options['collections'] || options['collection'];
-    collections     = collections ? collections.split(/[\s,]+/g) : [];
-    let where       = options['where'] ? `-q '${this.#parseWhere(options['where'])}'` : '';
+    let collections     = options['collections'] || options['collection'];
+    collections         = typeof collections === 'string' ? collections.split(/[\s,]+/g) : [];
+    let skipcollections = options['skip-collection'] || options['skip-collections'];
+    skipcollections     = typeof skipcollections === 'string' ? skipcollections.split(/[\s,]+/g) : [];
+
+    let where       = options['where'] ? this.#parseWhere(options['where']) : '';
     let drop        = options['drop'];
+
+    if (collections.length === 0) {
+      const out = await this.sshif(`mongosh ${exportConfig.mongoconn()} --eval "show collections" --quiet`);
+      collections = out.trim().split('\n');
+    }
+
+    if (skipcollections.length !== 0) {
+      collections = _.difference(collections, skipcollections);
+    }
 
     let dumpName = [
       'dump',
@@ -77,16 +92,22 @@ class Mongo extends Cmd {
     // control size of dump dir
     await this.dirSizeControl(MONGO_DUMP_DIR, 30);
 
-    console.log('\n// DUMP FROM %s TO %s', envFrom, envTo);
+    console.log($.bold('\n# DUMP FROM %s TO %s'), envFrom, envTo);
 
-    console.log('\n// EXPORT DATA');
+    console.log($.bold('\n# EXPORT DATA'));
 
     for (let collection of collections) {
-      await this.sshif(`mongodump ${exportConfig.mongoconn()} -c ${collection} ${where} --out ${MONGO_DUMP_DIR}/${dumpName}`);
+      await this.sshif(`mongodump ${exportConfig.mongoconn()} -c ${collection} ${where ? `-q '${where}'` : ''} --out ${MONGO_DUMP_DIR}/${dumpName}`);
     }
 
     const importDump = async() => {
-      console.log('\n// IMPORT DATA');
+      // if (!drop && collections.length && where) {
+      //   console.log($.bold('\n# DELETE ROWS BY WHERE'));
+      //   const queries = collections.map(collection => `db["${collection}"].remove(${where})`);
+      //   await this.sshif(`mongosh ${importConfig.mongoconn()} --eval '[${queries.join(', ')}]' --quiet`);
+      // }
+
+      console.log($.bold('\n# IMPORT DATA'));
       await this.sshif(
         `cd ${MONGO_DUMP_DIR}`,
         `mongorestore ${importConfig.mongoconn()} ${drop ? '--drop' : ''} ${dumpName}/${exportMongo.database}`,
@@ -94,7 +115,7 @@ class Mongo extends Cmd {
     }
 
     const clearTemp = async() => {
-      console.log(`\n// CLEAR ${this.env} TEMP`);
+      console.log($.bold(`\n# CLEAR ${this.env} TEMP`));
       await removeDumpDir();
       await cleanup();
     }
@@ -106,7 +127,7 @@ class Mongo extends Cmd {
 
     await this.sshif(`du -sh ${MONGO_DUMP_DIR}/${dumpName}.tar.gz`);
 
-    console.log('\n// MOVE DATA');
+    console.log($.bold('\n# MOVE DATA'));
 
     // catch home dir from export env (before switch)
     let exportHome = (await this.sshif('echo $HOME')).trim();
