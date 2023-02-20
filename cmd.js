@@ -12,7 +12,7 @@ class Cmd extends ConfigManger {
     //
   }
 
-  #hidePass(str) {
+  _hidePass(str) {
     str = str.replace(/(\s--password=)[^\s]+/g, '$1***');
     str = str.replace(/(https?:\/\/)(.*)(@.*)/g, '$1***:***$3');
     return str;
@@ -21,13 +21,13 @@ class Cmd extends ConfigManger {
   async ssh(...cmd) {
     cmd = cmd.join('\n');
     const { user, host, port } = this.config;
-    console.log($.bold($.blue(user + '@' + host)) + ' :> ' + $.yellow(this.#hidePass(cmd)));
+    console.log($.bold($.blue(user + '@' + host)) + ' :> ' + $.yellow(this._hidePass(cmd)));
     return spawnProcess('ssh', [`-p ${port}`, `${user}@${host}`, cmd]);
   }
 
   async cmd(...cmd) {
     cmd = cmd.join('\n');
-    console.log($.bold($.blue(`${USERNAME}@${HOSTNAME}`)) + ' :> ' + $.lightmagenta(this.#hidePass(cmd)));
+    console.log($.bold($.blue(`${USERNAME}@${HOSTNAME}`)) + ' :> ' + $.lightmagenta(this._hidePass(cmd)));
     return spawnProcess('sh', ['-c', cmd]);
   }
 

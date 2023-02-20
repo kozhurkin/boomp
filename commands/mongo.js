@@ -14,7 +14,7 @@ class Mongo extends Cmd {
     //
   }
 
-  #parseWhere(where) {
+  _parseWhere(where) {
     try {
       const ObjectId = id => ({ $eq: { $oid: id } });
       const context = vm.runInNewContext(`where = ${where}`, { ObjectId });
@@ -25,7 +25,7 @@ class Mongo extends Cmd {
     }
   }
 
-  // #addslashes(str) {
+  // _addslashes(str) {
   //   return str
   //     // .replace(/\'/g,'\\\'')
   //     // .replace(/\0/g,'\\0')
@@ -54,7 +54,7 @@ class Mongo extends Cmd {
     let skipcollections = options['skip-collection'] || options['skip-collections'];
     skipcollections     = typeof skipcollections === 'string' ? skipcollections.split(/[\s,]+/g) : [];
 
-    let where       = options['where'] ? this.#parseWhere(options['where']) : '';
+    let where       = options['where'] ? this._parseWhere(options['where']) : '';
     let drop        = options['drop'];
 
     if (collections.length === 0) {
