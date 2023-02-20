@@ -21,10 +21,11 @@ class Config {
     return this.production || this.env.includes('prod');
   }
   mysqlconn(withDb = true) {
-    const { host, username, password, database } = this.mysql;
+    const { host, port, username, password, database } = this.mysql;
     return _.compact([
       '--force',
       '--host=' + host,
+      port ? '--port=' + host : null,
       '--user=' + username,
       '--password=' + password,
       withDb ? database : null,
