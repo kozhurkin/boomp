@@ -25,7 +25,7 @@ class Config {
     return _.compact([
       '--force',
       '--host=' + host,
-      port ? '--port=' + host : null,
+      port ? '--port=' + port : null,
       '--user=' + username,
       '--password=' + password,
       withDb ? database : null,
