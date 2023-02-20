@@ -55,33 +55,6 @@ class Mysql extends Cmd {
       tables = _.difference(tables, skiptables);
     }
 
-    // // add tables specified by pattern
-    // tables = await (async (result = []) => {
-    //   for (let table of tables) {
-    //     if (table.indexOf('%') !== -1) {
-    //       let out = await this.sshif(`mysql ${exportConfig.mysqlconn()} -e "SHOW TABLES LIKE '${table}'"`);
-    //       result.concat(out.split('\n').slice(1, -1));
-    //     }
-    //   }
-    //   return result;
-    // })();
-
-    // let secretSelects = {};
-    // if (!schema) {
-    //   const rest = [];
-    //   for (let table of tables) {
-    //     let select = await this.selectBuilder(table, options.restrictions);
-    //     if (typeof select === 'string') {
-    //       secretSelects[table] = select;
-    //     } else if (select === -1) {
-    //       console.log($.bold(`Skipping forbidden table «${table}»`));
-    //     } else {
-    //       rest.push(table);
-    //     }
-    //   }
-    //   tables = rest;
-    // }
-
     await this.makeDumpDir(dumpName);
 
     // control size of dump dir
@@ -91,7 +64,7 @@ class Mysql extends Cmd {
 
     console.log($.bold('\n# EXPORT DATA\n'));
 
-    const mysqldump = `mysqldump --disable-keys --single-transaction --quick --compact ${exportConfig.mysqlconn()}`;
+    const mysqldump = `mysqldump --disable-keys --single-transaction --quick ${exportConfig.mysqlconn()}`;
     {
       const sed__IF_NOT_EXISTS = 'sed "s/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g"';
       let args = [
@@ -112,12 +85,6 @@ class Mysql extends Cmd {
       ].join(' ');
       await this.sshif(`${mysqldump} ${args} >> ${MYSQL_DUMP_DIR}/${dumpName}/data.sql`);
     }
-
-    // for (let tableName in secretSelects) {
-    //   const select = secretSelects[tableName];
-    //   await this.sshif(`mysql ${exportConfig.mysqlconn()} -e ${JSON.stringify(select)} -N | less | sed \"s/	NULL/	\\\\\\N/g\" > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows`);
-    //   await this.sshif(`mysqldump ${exportConfig.mysqlconn()} ${tableName} --single-transaction ${drop ? '' : '--skip-add-drop-table'} --no-data > ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema`);
-    // }
 
     await this.sshif(
       `cd ${MYSQL_DUMP_DIR}/${dumpName}`,
@@ -141,13 +108,10 @@ class Mysql extends Cmd {
           const deleteQuery = tables.map(table => `DELETE FROM ${table} WHERE ${where}`);
           await this.sshif(`mysql ${importConfig.mysqlconn()} -e \"${deleteQuery.join('; ')}\"`);
         }
-        await this.sshif(`cat ${MYSQL_DUMP_DIR}/${dumpName}/data.sql | mysql ${importConfig.mysqlconn()}`);
+        if (!schema) {
+          await this.sshif(`cat ${MYSQL_DUMP_DIR}/${dumpName}/data.sql | mysql ${importConfig.mysqlconn()}`);
+        }
       }
-
-      // for (const tableName in secretSelects) {
-      //   await this.sshif(`cat ${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.schema | ${sed__IF_NOT_EXISTS} | mysql ${importConfig.mysqlconn()}`);
-      //   await this.sshif(`mysqlimport ${importConfig.mysqlconn()} \'${MYSQL_DUMP_DIR}/${dumpName}/${tableName}.rows\' --local`);
-      // }
     };
 
     console.log($.bold('\n# MOVE DATA\n'));
