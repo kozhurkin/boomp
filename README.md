@@ -103,7 +103,7 @@ Use **.js** and **.json** config formats.
 const { mysql } = require('../config/production.json');
 
 module.exports = {
-  host : 'logr.info',
+  host : 'prod123.com',
   user : 'dima',
   port : 22,
   mysql: {
