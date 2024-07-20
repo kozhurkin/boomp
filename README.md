@@ -99,7 +99,7 @@ Use **.js** and **.json** config formats.
 
 ### production.js
 ```javascript
-// require mysql settings from main config
+// you can require mysql settings from another config
 const { mysql } = require('../config/production.json');
 
 module.exports = {
