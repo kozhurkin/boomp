@@ -9,7 +9,7 @@ Dump production data to your local machine like a boss.
 ## Installation
 
 ```bash
-sudo npm install -g boomdump
+npm install -g boomdump
 ```
 
 ## How it works
